@@ -6,14 +6,12 @@ from urllib.parse import urlparse
 
 app = Flask(__name__)
 
-# --- Whitelist of known safe domains ---
 KNOWN_SAFE_DOMAINS = {
     'google.com', 'youtube.com', 'facebook.com', 'twitter.com', 'instagram.com', 
     'linkedin.com', 'wikipedia.org', 'amazon.com', 'apple.com', 'microsoft.com', 
     'netflix.com', 'paypal.com', 'fleetcode.com'
 }
 
-# --- Load the final, unified model ---
 try:
     model = joblib.load('final_phishing_model.joblib')
     model_columns = joblib.load('final_model_columns.joblib')
@@ -76,7 +74,6 @@ def get_detailed_reasons(features, content_type):
         if features.get('has_link') == 1:
             reasons.append("- Includes a link that requires careful inspection.")
 
-    # A fallback message if no specific rules were triggered but the model still flagged it
     if not reasons:
          reasons.append("- The overall structure and patterns match examples of phishing the AI has learned from.")
 
@@ -93,7 +90,6 @@ def predict():
     content = data.get('content')
     content_type = data.get('type')
 
-    # --- Whitelist Check ---
     if content_type == 'url':
         try:
             domain = urlparse('http://' + content.replace('https://', '').replace('http://', '')).netloc.replace('www.', '')
@@ -105,7 +101,6 @@ def predict():
     if not model:
         return jsonify({'status': 'Error', 'content': content, 'reasons': ['AI model is not loaded.']})
 
-    # --- AI Prediction ---
     try:
         features = extract_features(content, content_type)
         query_df = pd.DataFrame([features], columns=model_columns).fillna(0)
