@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard - AI Phishing Detection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-color: #161b22;
+            --primary-color: #58a6ff;
+            --primary-hover: #388bfd;
+            --text-color: #c9d1d9;
+            --text-muted: #8b949e;
+            --border-color: #30363d;
+            --success-color: #56d364;
+            --warning-color: #f0883e;
+            --danger-color: #f85149;
+            --danger-bg: rgba(248, 81, 73, 0.1);
+            --success-bg: rgba(86, 211, 100, 0.1);
+            --warning-bg: rgba(240, 136, 62, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--card-color);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 2.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #58a6ff, #a258ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: color 0.2s ease, border-color 0.2s ease;
+        }
+        
+        .tab-button:hover {
+            color: var(--text-color);
+        }
+
+        .tab-button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-button svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .input-field {
+            flex-grow: 1;
+            background-color: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 0.8rem 1rem;
+            font-size: 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+        }
+        
+        textarea.input-field {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .submit-btn {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .result-box {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid;
+            display: none; /* Hidden by default */
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-box.safe {
+            background-color: var(--success-bg);
+            border-color: var(--success-color);
+        }
+        .result-box.warning {
+            background-color: var(--danger-bg);
+            border-color: var(--danger-color);
+        }
+        .result-box.error {
+            background-color: var(--warning-bg);
+            border-color: var(--warning-color);
+        }
+
+        .result-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+        
+        .result-title svg {
+            width: 1.75rem;
+            height: 1.75rem;
+        }
+
+        .result-title.safe { color: var(--success-color); }
+        .result-title.warning { color: var(--danger-color); }
+        .result-title.error { color: var(--warning-color); }
+
+        .result-content {
+            font-family: monospace;
+            word-wrap: break-word;
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+            background-color: rgba(0,0,0,0.2);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+        }
+        
+        .result-analysis h4 {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-color);
+        }
+        
+        .result-analysis ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .result-analysis ul li {
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            color: var(--text-muted);
+        }
+        .result-analysis ul li::before {
+            content: '→';
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>PhishGuard</h1>
+            <p>Your AI-Powered Shield Against Phishing</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-button active" data-tab="url">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                URL Checker
+            </button>
+            <button class="tab-button" data-tab="email">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                Email Checker
+            </button>
+            <button class="tab-button" data-tab="sms">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457.167-.92.23-1.395a3.001 3.001 0 00-2.25-2.813 9.06 9.06 0 01-2.25-2.813A9.06 9.06 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+                SMS Checker
+            </button>
+        </div>
+
+        <div id="url-content" class="tab-content active">
+            <div class="input-group">
+                <input type="text" id="url-input" class="input-field" placeholder="https://example.com">
+                <button class="submit-btn" onclick="checkContent('url')">Check</button>
+            </div>
+        </div>
+        <div id="email-content" class="tab-content">
+            <textarea id="email-input" class="input-field" placeholder="Paste the full email body here..."></textarea>
+            <button class="submit-btn" style="width: 100%; margin-top: 1rem;" onclick="checkContent('email')">Check Email</button>
+        </div>
+        <div id="sms-content" class="tab-content">
+            <textarea id="sms-input" class="input-field" placeholder="Paste the SMS message here..."></textarea>
+            <button class="submit-btn" style="width: 100%; margin-top: 1rem;" onclick="checkContent('sms')">Check SMS</button>
+        </div>
+
+        <div id="result-box" class="result-box">
+            <div id="result-title" class="result-title"></div>
+            <p id="result-content" class="result-content"></p>
+            <div class="result-analysis">
+                <h4>Analysis Details</h4>
+                <ul id="result-reasons"></ul>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const tabs = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        const icons = {
+            safe: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
+            warning: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>`,
+            error: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>`
+        };
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.getAttribute('data-tab');
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `${target}-content`) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
+        async function checkContent(type) {
+            let inputElement;
+            if (type === 'url') inputElement = document.getElementById('url-input');
+            if (type === 'email') inputElement = document.getElementById('email-input');
+            if (type === 'sms') inputElement = document.getElementById('sms-input');
+
+            const content = inputElement.value.trim();
+            if (!content) {
+                alert('Please enter content to check.');
+                return;
+            }
+
+            const resultBox = document.getElementById('result-box');
+            const resultTitle = document.getElementById('result-title');
+            const resultContent = document.getElementById('result-content');
+            const resultReasons = document.getElementById('result-reasons');
+
+            resultBox.style.display = 'block';
+            resultBox.className = 'result-box';
+            resultTitle.className = 'result-title';
+            resultTitle.innerHTML = `${icons.warning} <span>Analyzing...</span>`;
+            resultContent.textContent = '';
+            resultReasons.innerHTML = '';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content, type: type })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server responded with status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                let statusClass = '';
+                let icon = '';
+                if (data.status === 'Safe') {
+                    statusClass = 'safe';
+                    icon = icons.safe;
+                } else if (data.status === 'Phishing Warning') {
+                    statusClass = 'warning';
+                    icon = icons.warning;
+                } else {
+                    statusClass = 'error';
+                    icon = icons.error;
+                }
+
+                resultBox.classList.add(statusClass);
+                resultTitle.classList.add(statusClass);
+                
+                resultTitle.innerHTML = `${icon} <span>${data.status}</span>`;
+                resultContent.textContent = data.content;
+                
+                let reasonsHtml = '';
+                if (data.reasons && data.reasons.length > 0) {
+                    data.reasons.forEach(reason => {
+                        reasonsHtml += `<li>${reason}</li>`;
+                    });
+                } else {
+                    reasonsHtml = '<li>No specific details provided.</li>';
+                }
+                resultReasons.innerHTML = reasonsHtml;
+
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                resultBox.className = 'result-box error';
+                resultTitle.className = 'result-title error';
+                resultTitle.innerHTML = `${icons.error} <span>Analysis Error</span>`;
+                resultContent.textContent = content;
+                resultReasons.innerHTML = `<li>Could not get a valid response from the server.</li><li>Please check the terminal where you ran 'python app.py' to see the specific error message.</li>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
