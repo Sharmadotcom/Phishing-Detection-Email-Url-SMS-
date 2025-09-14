@@ -141,7 +141,7 @@ app = Flask(__name__)
 KNOWN_SAFE_DOMAINS = {
     'google.com', 'youtube.com', 'facebook.com', 'twitter.com', 'instagram.com', 
     'linkedin.com', 'wikipedia.org', 'amazon.com', 'apple.com', 'microsoft.com', 
-    'netflix.com', 'paypal.com', 'fleetcode.com'
+    'netflix.com', 'paypal.com', 'leetcode.com'
 }
 
 # --- Load the final, unified model ---
