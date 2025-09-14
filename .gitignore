@@ -1,0 +1,15 @@
+# Ignore the large dataset
+phishing_dataset.xlsx
+phishing_dataset.csv
+
+# Ignore the training script
+model_training.py
+MODEL.py
+
+# Ignore any old or large model files not needed for deployment
+phishing_model.joblib
+model_columns.joblib
+
+# Ignore Python cache files (good practice)
+__pycache__/
+*.pyc
