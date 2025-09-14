@@ -11,11 +11,9 @@ def extract_features(content, content_type):
     features = {}
     content_lower = str(content).lower()
 
-    # General Features
     features['length'] = len(content_lower)
     features['digit_count'] = sum(c.isdigit() for c in content_lower)
 
-    # URL-Specific Features
     if content_type == 'url':
         features['special_chars'] = content_lower.count('-') + content_lower.count('@') + content_lower.count('?') + content_lower.count('=')
         features['has_https'] = 1 if 'https' in content_lower else 0
@@ -25,8 +23,7 @@ def extract_features(content, content_type):
         features['special_chars'] = 0
         features['has_https'] = 0
         features['uses_ip'] = 0
-    
-    # Text-Specific Features (SMS/Email)
+
     if content_type in ['sms', 'email']:
         features['has_link'] = 1 if 'http' in content_lower or 'www' in content_lower else 0
         phishing_keywords = ['verify', 'account', 'suspended', 'urgent', 'winner', 'claim', 'free', 'password']
@@ -61,8 +58,7 @@ def train_final_model():
     
     accuracy = model.score(X_test, y_test)
     print(f"Final model trained with an accuracy of: {accuracy:.2f}")
-    
-    # Save the single model and its columns
+
     joblib.dump(model, 'final_phishing_model.joblib')
     joblib.dump(features_df.columns.tolist(), 'final_model_columns.joblib')
     print("Final model and column list saved successfully!")

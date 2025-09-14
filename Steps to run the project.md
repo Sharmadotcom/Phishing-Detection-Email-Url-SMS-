@@ -2,7 +2,7 @@
 
 Follow these steps to set up and run the project on your local machine.
 
-**FIRSTLY UNPACK THE "compressed_data" file in the project folder.**
+
 
 # Prerequisites
 
