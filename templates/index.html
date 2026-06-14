@@ -812,7 +812,22 @@
                 body: JSON.stringify({ content, type: activeTab })
             });
             if (!res.ok) throw new Error(res.status);
-            showResult(await res.json());
+            const data = await res.json();
+            showResult(data);
+
+            if (data.status !== 'Error') {
+                const h = getHistory();
+                const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+                h.unshift({
+                    timestamp: timestamp,
+                    type: activeTab,
+                    content: content,
+                    status: data.status,
+                    confidence: data.confidence
+                });
+                saveHistory(h);
+            }
+
             refreshStats();
             refreshHistory();
         } catch (e) {
@@ -841,21 +856,36 @@
         });
     }
 
+    function getHistory() {
+        const h = localStorage.getItem('phishguard_history');
+        return h ? JSON.parse(h) : [];
+    }
+
+    function saveHistory(h) {
+        if (h.length > 100) h.splice(100);
+        localStorage.setItem('phishguard_history', JSON.stringify(h));
+    }
+
     /* ── Stats ─────────────────────────────────────────── */
-    async function refreshStats() {
+    function refreshStats() {
         try {
-            const s = await (await fetch('/api/stats')).json();
-            document.getElementById('s-total').textContent = s.total_scans;
-            document.getElementById('s-threats').textContent = s.threats;
-            document.getElementById('s-safe').textContent = s.safe;
-            document.getElementById('s-rate').textContent = s.threat_rate + '%';
+            const h = getHistory();
+            const total = h.length;
+            const threats = h.filter(s => s.status.includes('Phishing')).length;
+            const safe = h.filter(s => s.status === 'Safe').length;
+            const threatRate = total > 0 ? ((threats / total) * 100).toFixed(1) : 0;
+
+            document.getElementById('s-total').textContent = total;
+            document.getElementById('s-threats').textContent = threats;
+            document.getElementById('s-safe').textContent = safe;
+            document.getElementById('s-rate').textContent = threatRate + '%';
         } catch (e) {}
     }
 
     /* ── History ───────────────────────────────────────── */
-    async function refreshHistory() {
+    function refreshHistory() {
         try {
-            const h = await (await fetch('/api/history')).json();
+            const h = getHistory();
             const empty = document.getElementById('hist-empty');
             const table = document.getElementById('hist-table');
             const body = document.getElementById('hist-body');
@@ -870,7 +900,7 @@
             table.style.display = 'block';
             body.innerHTML = '';
 
-            h.forEach(s => {
+            h.slice(0, 50).forEach(s => {
                 const tr = document.createElement('tr');
                 const isThreat = s.status.includes('Phishing');
                 const isErr = s.status === 'Error';
@@ -890,8 +920,8 @@
         } catch (e) {}
     }
 
-    async function clearHistory() {
-        await fetch('/api/clear-history', { method: 'POST' });
+    function clearHistory() {
+        localStorage.removeItem('phishguard_history');
         refreshHistory();
         refreshStats();
     }
@@ -935,10 +965,26 @@
                 row.innerHTML = `
                     <span class="batch-url" title="${esc(r.url)}">${esc(r.url)}</span>
                     <span class="pill ${pillClass}">${pillText}</span>
-                    <span class="batch-conf" style="color:${confColor}">${r.confidence}%</span>
+                    <span class="batch-conf" style="color:${confColor}">${r.confidence}/100</span>
                 `;
                 wrap.appendChild(row);
             });
+
+            // Save batch scans to local storage
+            const h = getHistory();
+            const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            (d.results || []).forEach(r => {
+                if (r.status !== 'Error') {
+                    h.unshift({
+                        timestamp: timestamp,
+                        type: 'url',
+                        content: r.url,
+                        status: r.status === 'Phishing' ? 'Phishing Warning' : 'Safe',
+                        confidence: r.confidence
+                    });
+                }
+            });
+            saveHistory(h);
 
             wrap.classList.add('show');
             refreshStats();
