@@ -1,15 +1,22 @@
-# Ignore the large dataset
-phishing_dataset.xlsx
-phishing_dataset.csv
+# Environments
+.env
+.env.local
+.env.*.local
 
-# Ignore the training script
-model_training.py
-MODEL.py
-
-# Ignore any old or large model files not needed for deployment
-phishing_model.joblib
-model_columns.joblib
-
-# Ignore Python cache files (good practice)
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "PhishGuard — Threat Intelligence Detector",
+  "version": "2.0",
+  "description": "Scans any website or link for phishing threats in real-time using multiple threat intelligence feeds. One-click protection from the browser toolbar.",
+  
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "contextMenus",
+    "scripting"
+  ],
+
+  "host_permissions": [
+    "http://127.0.0.1:5000/*",
+    "http://localhost:5000/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "PhishGuard — Check Current Page"
+  }
+}

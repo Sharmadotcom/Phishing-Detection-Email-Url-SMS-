@@ -1,107 +1,36 @@
 from flask import Flask, request, jsonify, render_template
-import joblib
-import pandas as pd
-import re
+from flask_cors import CORS
 from urllib.parse import urlparse
+from datetime import datetime
+import threat_intel
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for browser extension
 
-# Expanded whitelist
-KNOWN_SAFE_DOMAINS = {
-    'google.com', 'facebook.com', 'twitter.com', 'instagram.com', 'linkedin.com', 
-    'wikipedia.org', 'amazon.com', 'apple.com', 'microsoft.com', 'netflix.com', 
-    'paypal.com', 'leetcode.com', 'chatgpt.com', 'openai.com'
-}
+# ─── In-Memory Scan Storage ───────────────────────────────────────────────────
+scan_history = []
+MAX_HISTORY = 100
 
-# Load the final, unified model
-try:
-    model = joblib.load('final_phishing_model.joblib')
-    model_columns = joblib.load('final_model_columns.joblib')
-    print("Final model loaded successfully.")
-except FileNotFoundError:
-    print("Model files not found. Please run the new model_training.py first.")
-    model = None
+def record_scan(content, content_type, status, confidence):
+    """Record a scan to in-memory history."""
+    # Truncate content for storage
+    preview = content[:80] + '...' if len(content) > 80 else content
 
-def extract_features(content, content_type):
-    """
-    A single, robust function to extract features from any content type.
-    This function MUST BE IDENTICAL in both training and app scripts.
-    """
-    features = {}
-    content_lower = str(content).lower()
-    
-    # Basic Features
-    features['length'] = len(content_lower)
-    features['digit_count'] = sum(c.isdigit() for c in content_lower)
+    record = {
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'type': content_type,
+        'content': preview,
+        'status': status,
+        'confidence': confidence
+    }
 
-    if content_type == 'url':
-        try:
-            parsed_url = urlparse(content_lower if '://' in content_lower else 'http://' + content_lower)
-            domain = parsed_url.netloc
-            path = parsed_url.path
-            
-            features['special_chars'] = content_lower.count('-') + content_lower.count('@') + content_lower.count('?') + content_lower.count('=') + content_lower.count('.')
-            features['has_https'] = 1 if parsed_url.scheme == 'https' else 0
-            
-            ip_pattern = r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
-            features['uses_ip'] = 1 if re.search(ip_pattern, domain) else 0
-            
-            # --- New, More Advanced Features ---
-            features['subdomain_count'] = domain.count('.')
-            features['path_length'] = len(path)
-            tld = domain.split('.')[-1]
-            features['tld_length'] = len(tld.split('/')[0]) # Get TLD length
-            
-        except Exception:
-            # Fallback for malformed URLs
-            features['special_chars'] = content_lower.count('.') + content_lower.count('-')
-            features['has_httpshttps'] = 0
-            features['uses_ip'] = 0
-            features['subdomain_count'] = 0
-            features['path_length'] = 0
-            features['tld_length'] = 0
-    else: # For email/sms
-        features['special_chars'] = 0
-        features['has_https'] = 0
-        features['uses_ip'] = 0
-        features['subdomain_count'] = 0
-        features['path_length'] = 0
-        features['tld_length'] = 0
-    
-    if content_type in ['sms', 'email']:
-        features['has_link'] = 1 if 'http' in content_lower or 'www' in content_lower else 0
-        phishing_keywords = ['verify', 'account', 'suspended', 'urgent', 'winner', 'claim', 'free', 'password', 'login']
-        features['keyword_count'] = sum(content_lower.count(keyword) for keyword in phishing_keywords)
-    else:
-        features['has_link'] = 0
-        features['keyword_count'] = 0
+    scan_history.insert(0, record)
 
-    return features
+    # Keep only the most recent scans
+    if len(scan_history) > MAX_HISTORY:
+        scan_history.pop()
 
-def get_detailed_reasons(features, content_type):
-    """ Generates a list of human-readable reasons for a phishing classification. """
-    reasons = []
-    
-    if content_type == 'url':
-        if features.get('uses_ip') == 1:
-            reasons.append("- Contains a numeric IP address instead of a domain name.")
-        if features.get('has_https') == 0:
-            reasons.append("- The connection is not secure (lacks HTTPS).")
-        # --- Improved Reasons ---
-        if features.get('subdomain_count', 0) > 3:
-             reasons.append("- Uses an excessive number of subdomains, a common hiding tactic.")
-        if features.get('path_length', 0) > 40:
-             reasons.append("- Contains an unusually long path, potentially to hide the true destination.")
-
-    if content_type in ['sms', 'email']:
-        keyword_count = int(features.get('keyword_count', 0))
-        if keyword_count > 0:
-            reasons.append(f"- Contains {keyword_count} suspicious keyword(s) (e.g., 'urgent', 'verify', 'free').")
-    
-    if not reasons:
-        reasons.append("- Its structure and patterns match examples of phishing the AI has learned from.")
-
-    return reasons
+# ─── Routes ──────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def home():
@@ -111,39 +40,122 @@ def home():
 def predict():
     data = request.get_json()
     content = data.get('content')
-    content_type = data.get('type')
+    content_type = data.get('type', 'url')
 
-    # Whitelist Check
-    if content_type == 'url':
-        try:
-            domain = urlparse('http://' + content.replace('https://', '').replace('http://', '')).netloc.replace('www.', '')
-            if domain in KNOWN_SAFE_DOMAINS:
-                return jsonify({'status': 'Safe', 'content': content, 'reasons': [f"{domain} is a known and trusted domain."]})
-        except Exception:
-            pass
+    if not content:
+        return jsonify({'status': 'Error', 'content': '', 'reasons': ['No content provided.']})
 
-    if not model:
-        return jsonify({'status': 'Error', 'content': content, 'reasons': ['AI model is not loaded.']})
-
-    # AI Prediction
     try:
-        features = extract_features(content, content_type)
-        query_df = pd.DataFrame([features]).reindex(columns=model_columns, fill_value=0)
-        
-        prediction = model.predict(query_df)[0]
-        result_status = "Phishing Warning" if prediction == 1 else "Safe"
-        
-        reasons = []
-        if result_status == "Phishing Warning":
-            reasons.extend(get_detailed_reasons(features, content_type))
+        if content_type == 'url':
+            # Run threat intelligence URL analysis
+            analysis = threat_intel.analyze_url(content)
+            
+            # Map verdict to frontend expected status: 'Safe' or 'Phishing Warning'
+            status = 'Phishing Warning' if analysis['verdict'] in ['Suspicious', 'Malicious'] else 'Safe'
+            confidence = analysis['risk_score']
+            reasons = analysis['reasons']
         else:
-            reasons.append("The model did not find common phishing patterns.")
+            # Run threat intelligence email/SMS analysis
+            analysis = threat_intel.analyze_text(content, content_type)
+            status = 'Phishing Warning' if analysis['verdict'] in ['Suspicious', 'Malicious'] else 'Safe'
+            confidence = analysis['risk_score']
+            reasons = analysis['reasons']
 
-        return jsonify({'status': result_status, 'content': content, 'reasons': reasons})
-    
+        record_scan(content, content_type, status, confidence)
+
+        return jsonify({
+            'status': status,
+            'content': content,
+            'confidence': confidence,
+            'reasons': reasons
+        })
+
     except Exception as e:
-        print(f"!!! PREDICTION ERROR: {e}")
-        return jsonify({'status': 'Error', 'content': content, 'reasons': ['An error occurred during AI analysis.']})
+        print(f"!!! ANALYSIS ERROR: {e}")
+        return jsonify({'status': 'Error', 'content': content, 'reasons': [f'An error occurred during threat intelligence lookup: {str(e)}']})
+
+# Extension compatibility: alias /check → same logic as /predict
+@app.route('/check', methods=['POST'])
+def check():
+    """Alias endpoint for the browser extension."""
+    data = request.get_json()
+    url = data.get('url', data.get('content', ''))
+
+    if not url:
+        return jsonify({'result': 'Error', 'error': 'No URL provided.'})
+
+    try:
+        analysis = threat_intel.analyze_url(url)
+        is_phishing = analysis['verdict'] in ['Suspicious', 'Malicious']
+        result = "Phishing" if is_phishing else "Safe"
+        confidence = analysis['risk_score']
+
+        record_scan(url, 'url', result, confidence)
+
+        return jsonify({
+            'prediction': 1 if is_phishing else 0,
+            'result': result,
+            'confidence': confidence
+        })
+    except Exception as e:
+        print(f"!!! CHECK ERROR: {e}")
+        return jsonify({'result': 'Error', 'error': f'Analysis failed: {str(e)}'})
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """Return aggregated scan statistics."""
+    total = len(scan_history)
+    threats = sum(1 for s in scan_history if s['status'] in ['Phishing Warning', 'Phishing'])
+    safe = sum(1 for s in scan_history if s['status'] == 'Safe')
+    threat_rate = round((threats / total * 100), 1) if total > 0 else 0
+
+    return jsonify({
+        'total_scans': total,
+        'threats': threats,
+        'safe': safe,
+        'threat_rate': threat_rate
+    })
+
+@app.route('/api/history', methods=['GET'])
+def get_history():
+    """Return recent scan history."""
+    return jsonify(scan_history[:50])
+
+@app.route('/api/batch', methods=['POST'])
+def batch_scan():
+    """Scan multiple URLs at once."""
+    data = request.get_json()
+    urls = data.get('urls', [])
+
+    if not urls:
+        return jsonify({'error': 'No URLs provided.', 'results': []})
+
+    results = []
+    for url in urls[:20]:  # Limit to 20 URLs per batch
+        url = url.strip()
+        if not url:
+            continue
+
+        try:
+            analysis = threat_intel.analyze_url(url)
+            is_phishing = analysis['verdict'] in ['Suspicious', 'Malicious']
+            status = "Phishing" if is_phishing else "Safe"
+            confidence = analysis['risk_score']
+
+            record_scan(url, 'url', status, confidence)
+            results.append({'url': url, 'status': status, 'confidence': confidence})
+        except Exception:
+            results.append({'url': url, 'status': 'Error', 'confidence': 0})
+
+    return jsonify({'results': results})
+
+@app.route('/api/clear-history', methods=['POST'])
+def clear_history():
+    """Clear all scan history."""
+    scan_history.clear()
+    return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
+    # Print clean console start message (Windows cp1252 safe)
+    print("[OK] PhishGuard threat intelligence server started on port 5000.")
     app.run(debug=True)
