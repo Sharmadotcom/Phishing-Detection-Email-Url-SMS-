@@ -4,6 +4,9 @@
 [![Flask Version](https://img.shields.io/badge/flask-3.1%2B-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
+[![Live Demo](https://img.shields.io/badge/demo-live-orange.svg)](https://phishing-detection-email-url-mcp1j6ccp-sharmadotcoms-projects.vercel.app)
+
+🚀 **[Try the Live Demo](https://phishing-detection-email-url-mcp1j6ccp-sharmadotcoms-projects.vercel.app)**
 
 PhishGuard is a high-performance, real-time threat intelligence and phishing detection platform. It dynamically assesses URLs, emails, and SMS messages for security vulnerabilities and malicious indicators using live feeds (Google Safe Browsing, VirusTotal), automated domain registrations registry checks (WHOIS), SSL/TLS handshake verifications, and custom heuristic algorithms.
 
