@@ -67,6 +67,24 @@ The final classification is determined by a weighted summation of detected signa
 
 ---
 
+## 📸 Screenshots
+
+### 1. Main Platform Interface
+![PhishGuard Main Dashboard](docs/screenshots/dashboard_full.png)
+
+### 2. URL Scan Verdicts (Safe vs Phishing Warning)
+| Whitelisted Safe Domain Scan | Suspicious Threat Warning Scan |
+| :---: | :---: |
+| ![Safe Scan Result](docs/screenshots/safe_scan.png) | ![Phishing Warning Scan Result](docs/screenshots/phishing_warning.png) |
+
+### 3. Batch Scanning & Historical Scans Table
+![Batch Scans and History Logs](docs/screenshots/recent_scans_batch.png)
+
+### 4. Real-Time Telemetry Counters
+![Dashboard Telemetry](docs/screenshots/dashboard_stats.png)
+
+---
+
 ## 🚀 Installation & Setup
 
 ### Prerequisites
