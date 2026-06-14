@@ -857,13 +857,26 @@
     }
 
     function getHistory() {
-        const h = localStorage.getItem('phishguard_history');
-        return h ? JSON.parse(h) : [];
+        try {
+            const h = localStorage.getItem('phishguard_history');
+            const parsed = h ? JSON.parse(h) : [];
+            console.log("[PhishGuard] Loaded history from localStorage:", parsed);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            console.error("[PhishGuard] Failed to parse history from localStorage. Clearing corrupted data.", e);
+            try { localStorage.removeItem('phishguard_history'); } catch (err) {}
+            return [];
+        }
     }
 
     function saveHistory(h) {
-        if (h.length > 100) h.splice(100);
-        localStorage.setItem('phishguard_history', JSON.stringify(h));
+        try {
+            if (h.length > 100) h.splice(100);
+            localStorage.setItem('phishguard_history', JSON.stringify(h));
+            console.log("[PhishGuard] Saved history to localStorage. Count:", h.length);
+        } catch (e) {
+            console.error("[PhishGuard] Failed to save history to localStorage:", e);
+        }
     }
 
     /* ── Stats ─────────────────────────────────────────── */
@@ -871,15 +884,19 @@
         try {
             const h = getHistory();
             const total = h.length;
-            const threats = h.filter(s => s.status.includes('Phishing')).length;
-            const safe = h.filter(s => s.status === 'Safe').length;
+            const threats = h.filter(s => s && s.status && s.status.includes('Phishing')).length;
+            const safe = h.filter(s => s && s.status === 'Safe').length;
             const threatRate = total > 0 ? ((threats / total) * 100).toFixed(1) : 0;
+
+            console.log("[PhishGuard] Stats computed:", { total, threats, safe, threatRate });
 
             document.getElementById('s-total').textContent = total;
             document.getElementById('s-threats').textContent = threats;
             document.getElementById('s-safe').textContent = safe;
             document.getElementById('s-rate').textContent = threatRate + '%';
-        } catch (e) {}
+        } catch (e) {
+            console.error("[PhishGuard] Failed to compute/render stats:", e);
+        }
     }
 
     /* ── History ───────────────────────────────────────── */
@@ -890,34 +907,43 @@
             const table = document.getElementById('hist-table');
             const body = document.getElementById('hist-body');
 
+            // Always clear body innerHTML at the start of rendering
+            body.innerHTML = '';
+
             if (!h.length) {
                 empty.style.display = 'block';
                 table.style.display = 'none';
+                console.log("[PhishGuard] No history to render, showing empty state.");
                 return;
             }
 
             empty.style.display = 'none';
             table.style.display = 'block';
-            body.innerHTML = '';
 
             h.slice(0, 50).forEach(s => {
+                if (!s) return;
                 const tr = document.createElement('tr');
-                const isThreat = s.status.includes('Phishing');
+                const isThreat = s.status && s.status.includes('Phishing');
                 const isErr = s.status === 'Error';
                 const pillClass = isErr ? 'pill-err' : (isThreat ? 'pill-threat' : 'pill-safe');
                 const pillText = isErr ? 'Error' : (isThreat ? 'Threat' : 'Safe');
                 const confColor = isErr ? 'var(--orange)' : (isThreat ? 'var(--red)' : 'var(--green)');
 
+                const timeStr = s.timestamp ? (s.timestamp.includes(' ') ? s.timestamp.split(' ')[1] : s.timestamp) : '00:00:00';
+
                 tr.innerHTML = `
-                    <td class="cell-mono" style="white-space:nowrap">${s.timestamp.split(' ')[1] || s.timestamp}</td>
-                    <td><span class="pill pill-type">${s.type}</span></td>
-                    <td class="cell-mono cell-truncate" title="${esc(s.content)}">${esc(s.content)}</td>
+                    <td class="cell-mono" style="white-space:nowrap">${timeStr}</td>
+                    <td><span class="pill pill-type">${s.type || 'url'}</span></td>
+                    <td class="cell-mono cell-truncate" title="${esc(s.content || '')}">${esc(s.content || '')}</td>
                     <td><span class="pill ${pillClass}">${pillText}</span></td>
-                    <td class="cell-mono" style="color:${confColor}">${s.confidence}/100</td>
+                    <td class="cell-mono" style="color:${confColor}">${s.confidence || 0}/100</td>
                 `;
                 body.appendChild(tr);
             });
-        } catch (e) {}
+            console.log("[PhishGuard] History rendered. Rows:", h.slice(0, 50).length);
+        } catch (e) {
+            console.error("[PhishGuard] Failed to render history:", e);
+        }
     }
 
     function clearHistory() {
