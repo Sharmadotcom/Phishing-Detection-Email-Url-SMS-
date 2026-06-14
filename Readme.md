@@ -1,4 +1,4 @@
-# 🛡️ PhishGuard — Real-Time Threat Intelligence Platform
+#  PhishGuard — Real-Time Threat Intelligence Platform
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![Flask Version](https://img.shields.io/badge/flask-3.1%2B-green.svg)](https://flask.palletsprojects.com/)
