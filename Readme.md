@@ -144,18 +144,6 @@ python app.py
 After the server initializes, launch your browser and navigate to:
 👉 **http://127.0.0.1:5000**
 
----
-
-## 🛡️ Chrome Extension Installation
-
-1. Open Google Chrome and go to the Extensions page: `chrome://extensions/`
-2. Toggle the **Developer mode** switch in the top-right corner to **On**.
-3. Click the **Load unpacked** button in the top-left corner.
-4. Select the `phishguard-extension` directory from this repository.
-5. The extension is now active. Click the shield icon in your toolbar to scan active pages in real-time!
-
----
-
 ## 🛠️ Troubleshooting
 
 #### 1. WHOIS Timezone Errors or Flaky Lookups
