@@ -87,10 +87,6 @@ The final classification is determined by a weighted summation of detected signa
 
 ## 🚀 Installation & Setup
 
-### Prerequisites
-- Python 3.8 or higher installed on your system.
-- Google Chrome browser (optional, for browser extension testing).
-
 ### 1. Clone & Set Up Directory
 Open your terminal and navigate to your project directory.
 
